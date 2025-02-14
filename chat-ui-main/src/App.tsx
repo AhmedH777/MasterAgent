@@ -13,7 +13,7 @@ function App() {
   ]);
   const [input, setInput] = useState("");
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
-  const [model, setModel] = useState("llama3.2"); // Default model is Ollama
+  const [model, setModel] = useState("gpt-4-turbo"); // Default model is Ollama
 
   const formatResponse = (text: string) => {
     return text
@@ -101,10 +101,10 @@ function App() {
             onChange={(e) => setModel(e.target.value)}
             className="border p-2 rounded-lg"
           >
+            <option value="gpt-4-turbo"> (Online LLM GPT4-turbo)</option>
+            <option value="gpt-4o">      (Online LLM GPT4-o)</option>
             <option value="llama3.2">    (Local LLM Llama3.2)</option>
             <option value="deepseek-r1"> (Local LLM DeepSeek-R1)</option>
-            <option value="gpt-4o">      (Online LLM GPT4-o)</option>
-            <option value="gpt-4-turbo"> (Online LLM GPT4-turbo)</option>
           </select>
         </header>
 

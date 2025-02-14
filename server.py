@@ -1,6 +1,12 @@
 from flask import Flask, request, jsonify
 from flask_cors import CORS
-from master_agent.chat import parse_message
+from master_agent.Agent import Agent
+
+# Initialize the Agent
+agent = Agent(model="gpt-4-turbo",
+              max_memory_context_buffer=10,
+              role="assistant",
+              description="You are a helpful AI assistant.")
 
 app = Flask(__name__)
 CORS(app)  # Enable CORS for all routes
@@ -15,8 +21,16 @@ def chat():
     if not user_message:
         return jsonify({"error": "Empty message"}), 400
     
-    # Master Agent Response
-    bot_reply = parse_message(user_message, model=model_type)
+    ################################################################
+    ####################### Deploy the Agent #######################
+    ################################################################
+    # Check if agent model is the same as the user model
+    if agent.get_model() != model_type:
+        agent.set_model(model_type)
+    
+    # Chat with the user
+    bot_reply = agent.chat(user_message)
+    ################################################################
 
     return jsonify({"response": bot_reply})
 
