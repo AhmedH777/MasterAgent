@@ -14,13 +14,14 @@ from master_agent.Memory.MemoryBlock import MemoryBlock
 class GenericMemory:
     """Agent's memory that dynamically clusters, merges, and links knowledge."""
     
-    def __init__(self, categories: List[str], similarity_threshold=0.6, merge_threshold=0.6, min_cluster_words = 15, debug=False):
+    def __init__(self, categories: List[str], similarity_threshold=0.6, merge_threshold=0.6, min_cluster_words = 15, logger=None):
         """
         - categories: List of category labels to classify Memory Blocks
         - similarity_threshold: Minimum similarity to consider two sentences related
         - merge_threshold: Minimum similarity to merge two Memory Blocks
         """
-        self.debug = debug
+        self.logger = logger
+        self.logger_name = "MEMORY"
         self.categories = categories
         self.similarity_threshold = similarity_threshold
         self.merge_threshold = merge_threshold
@@ -41,7 +42,7 @@ class GenericMemory:
         for cluster_id, cluster_sentences in clustered_sentences.items():
             # Create clusters with more than min_cluster_words
             if self.__is_valid_cluster(cluster_sentences):
-                new_mem_block = MemoryBlock(cluster_sentences, self.categories)
+                new_mem_block = MemoryBlock(cluster_sentences, self.categories, logger=self.logger)
 
                 # Check if this cluster is similar to an existing one
                 is_merged = self.__check_and_merge_new_mem_blocks(new_mem_block)
@@ -49,8 +50,9 @@ class GenericMemory:
                 if(not is_merged):
                     # Add the cluster if it's new
                     self.memory.append(new_mem_block)
-                    if self.debug:
-                        print(f"✅ Added New Memory Block: {new_mem_block}")
+                    if self.logger is not None:
+                        message = f"✅ Added New Memory Block: {new_mem_block}"
+                        self.logger.info(f"[{self.logger_name}] {message}")
             else:
                 rejected_sentences.extend(cluster_sentences)
 
@@ -68,11 +70,6 @@ class GenericMemory:
         # Sort by highest similarity
         scores.sort(key=lambda x: x[1], reverse=True)
 
-        if self.debug:
-            print(f"\n🔎 Query: {query}")
-            for i, (mem_block, score) in enumerate(scores[:3]):
-                print(f"{i+1}. {mem_block.summary} (Similarity: {score:.2f})")
-
         return scores[:top_k]
     
     def get_memblocks_summary(self):
@@ -88,16 +85,18 @@ class GenericMemory:
                     if similarity >= self.merge_threshold:
                         mem_block_a.update_summary(mem_block_b.summary)
                         self.memory.remove(mem_block_b)
-                        if self.debug:
-                            print(f"🔄 Merging Memory Block: {mem_block_a} with Memory Block: {mem_block_b} (Similarity: {similarity:.2f})")
-        if self.debug:
-            print("🧹 Memory optimized.")
+                        if self.logger is not None:
+                            message = f"🔄 Merging Memory Block: {mem_block_a} with Memory Block: {mem_block_b} (Similarity: {similarity:.2f})"
+                            self.logger.info(f"[{self.logger_name}] {message}")
+
+        if self.logger is not None:
+            message = f"GenericMem : 🧹 Memory optimized."
+            self.logger.info(f"[{self.logger_name}] {message}")
     
     def save_memory(self):
         """Saves memory mem_blocks to a JSON file."""
         with open(self.memory_file, "w") as f:
             json.dump([{"summary": c.summary, "category": c.category, "confidence": c.confidence} for c in self.memory], f)
-        if self.debug:
             print("💾 Memory saved.")
 
     def load_memory(self):
@@ -105,19 +104,18 @@ class GenericMemory:
         try:
             with open(self.memory_file, "r") as f:
                 data = json.load(f)
-                self.memory = [MemoryBlock([d["summary"]], self.categories) for d in data]
-            if self.debug:
+                self.memory = [MemoryBlock([d["summary"]], self.categories, logger=self.logger) for d in data]
                 print("📂 Memory loaded.")
         except FileNotFoundError:
-            if self.debug:
                 print("⚠ No previous memory found.")
 
     def reset(self):
         """Resets memory by clearing all mem_blocks and links."""
         self.memory.clear()
         self.links.clear()
-        if self.debug:
-            print("🗑 Memory reset.")
+        if self.logger is not None:
+            message = f"GenericMem : 🗑 Memory reset."
+            self.logger.info(f"[{self.logger_name}] {message}")
 
     def create_links(self):
         """Finds and stores relationships between mem_blocks based on similarity."""
@@ -131,8 +129,17 @@ class GenericMemory:
                         if mem_block_a not in self.links:
                             self.links[mem_block_a] = []
                         self.links[mem_block_a].append((mem_block_b, similarity))
-        if self.debug:
-            print("🔗 Links between mem_blocks have been updated.")
+        if self.logger is not None:
+            message = f"GenericMem : 🔗 Links between mem_blocks have been updated."
+            self.logger.info(f"[{self.logger_name}] {message}")
+
+    def display_memory_logger(self):
+        """Displays the current mem_blocks in memory."""
+        if self.logger is not None:
+            message = f"GenericMem : 📌 Current Memory:"
+            self.logger.info(f"[{self.logger_name}] {message}")
+            for mem_block in self.memory:
+                self.logger.info(f"[{self.logger_name}] {mem_block}")
 
     def display_memory(self):
         """Displays the current mem_blocks in memory."""
@@ -152,7 +159,9 @@ class GenericMemory:
     def visualize_links(self, output_file="knowledge_graph.html"):
         """Visualizes knowledge links using NetworkX and Pyvis."""
         if not self.links:
-            print("⚠ No links to visualize.")
+            if self.logger is not None:
+                message = f"GenericMem : ⚠ No links to visualize."
+                self.logger.info(f"[{self.logger_name}] {message}")
             return
         
         G = nx.Graph()
@@ -176,7 +185,9 @@ class GenericMemory:
 
         # Save and open the graph
         net.write_html(output_file)  
-        print(f"📌 Knowledge Graph saved as {output_file}")
+        if self.logger is not None:
+            message = f"GenericMem : 📌 Knowledge Graph saved as {output_file}"
+            self.logger.info(f"[{self.logger_name}] {message}")
 
         # Open the graph in the browser
         import webbrowser
@@ -209,10 +220,12 @@ class GenericMemory:
             similarity = cosine_similarity([memory_block.embedding], [new_memory_block.embedding])[0][0]
             if similarity >= self.merge_threshold:
                 memory_block.update_summary(new_memory_block.summary)
-                if self.debug:
-                    print(f"🔄 Merging MemBlock: {memory_block} with New MemBlock (Similarity: {similarity:.2f})")
+                if self.logger is not None:
+                    message = f"GenericMem : 🔄 Merging MemBlock: {memory_block} with New MemBlock (Similarity: {similarity:.2f})"
+                    self.logger.info(f"[{self.logger_name}] {message}")
                 return True
         return False
+
 
 '''
 # Test the Generic Memory

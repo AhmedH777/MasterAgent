@@ -4,7 +4,7 @@ import litellm
 import requests
 import subprocess
 from dotenv import load_dotenv
-from master_agent.Memory.ShortTermMemory import ShortTermMemory
+from master_agent.Memory.WorkingMemory import WorkingMemory
 
 ############################################################################################################
 ######################################### Ollama and OpenAI API Keys #######################################
@@ -22,9 +22,12 @@ class LLM():
     def __init__(self,
                 model="gpt-4-turbo",
                 model_provider="openai",
-                max_memory_context_buffer=10,
+                max_memory_size=30,
+                summary_trigger=10,
+                preserve_last_n_context=4,
                 role="assistant",
-                description="You are a helpful AI assistant."):
+                description="You are a helpful AI assistant.",
+                logger=None):
         """
         Initialize the LLM class with the given parameters.
         
@@ -38,10 +41,12 @@ class LLM():
         self.role = role
         self.description = description
         self.ollama_process = None
+        self.logger = logger
+        self.logger_name = "LLM"
 
         # Add Short Term Memory
-        self.STM = ShortTermMemory(context_buffer_counter=max_memory_context_buffer, presistent_memory={"role": self.role, "content": self.description})
-
+        self.WM = WorkingMemory(system_message={"role": "system", "content": self.description}, max_buffer_size=max_memory_size, summary_trigger=summary_trigger, preserve_last_n=preserve_last_n_context, logger=logger)
+        
         # Start or stop the Ollama server based on the model provider
         self.__handle_ollama_server()
 
@@ -53,19 +58,20 @@ class LLM():
         :return: The response from the model.
         """
         # Add the user input to the Short Term Memory
-        self.STM.add({"role": "user", "content": user_input})
+        self.WM.add_interaction("user", user_input)
 
         # Invoke the model to get a response
-        print("##############################################")
-        print("Prompt: ", self.STM.get_prompt())
-        response = self.__invoke(self.STM.get_prompt())
+        if self.logger is not None:
+            message = f"Prompt : {self.WM.get_context()}"
+            self.logger.info(f"[{self.logger_name}] {message}")
+        response = self.__invoke(self.WM.get_context())
 
         # Extract the content of the response
         filtered_response = response["choices"][0]["message"]["content"]
 
         # Add the response to the Short Term Memory
-        self.STM.add({"role": self.role, "content": filtered_response})
-        print("##############################################")
+        self.WM.add_interaction(self.role, filtered_response)
+
         return filtered_response
 
     def reset(self):

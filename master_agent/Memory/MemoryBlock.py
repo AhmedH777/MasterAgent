@@ -18,7 +18,7 @@ openai.api_key = os.getenv('API_KEY')
 class MemoryBlock:
     """Handles a single MemoryBlock of sentences (summarization & classification)."""
 
-    def __init__(self, sentences: List[str], categories: List[str], use_openai=True, model_type="t5", open_ai_model="gpt-4o"):
+    def __init__(self, sentences: List[str], categories: List[str], use_openai=True, model_type="t5", open_ai_model="gpt-4o", logger=None):
         """
         - sentences: List of sentences in the MemoryBlock
         - categories: List of category labels
@@ -28,6 +28,8 @@ class MemoryBlock:
         ######################## Configurations
         self.use_openai = use_openai
         self.device = 0 if torch.cuda.is_available() else -1  # Use GPU if available
+        self.logger = logger
+        self.logger_name = "MEMORY"
         ######################## Models Init
         # If not using OpenAI, load local Hugging Face models
         self.openai_model = open_ai_model
@@ -108,8 +110,10 @@ class MemoryBlock:
                     summary = self.title_generator(joint_sentences, max_length=max_length, min_length=min_length, do_sample=False)
                     summary = summary[0]['summary_text']
         except Exception as e:
-            print(f"Error in summarization: {e}")
             summary = "Summary unavailable"
+            if self.logger is not None:
+                message = f"MemBlock: Error in summarization: {e}"
+                self.logger.info(f"[{self.logger_name}] {message}")
         return summary
 
     def __classify(self, joint_sentences, categories):
@@ -129,9 +133,12 @@ class MemoryBlock:
                 category = result["labels"][0]  # Best category
                 confidence = result["scores"][0]  # Confidence score
         except Exception as e:
-            print(f"Error in classification: {e}")
             category = "Unknown"
             confidence = 0.0
+            if self.logger is not None:
+                message = f"MemBlock: Error in classification: {e}"
+                self.logger.info(f"[{self.logger_name}] {message}")
+
         return category, confidence
 
     def __repr__(self):

@@ -3,20 +3,28 @@ from master_agent.LLM import LLM
 class Agent:
     def __init__(self,
                  model="gpt-4-turbo",
-                 max_memory_context_buffer=10,
-                 role="assistant",
-                 description="You are a helpful AI assistant."):
+                 max_memory_size=30,
+                 summary_trigger=10,
+                 preserve_last_n_context=4,
+                 role = "assistant",
+                 description="You are a helpful AI assistant.",
+                 logger=None):
         """
         Initialize the Agent class with the given parameters.
         
         :param model: The model to use for generating responses.
         """
+        self.logger = logger
+        self.logger_name = "Agent"
         self.model = model
         self.llm = LLM(model=model,
                        model_provider=self.__find_model_provider(),
-                       max_memory_context_buffer=max_memory_context_buffer,
-                       role=role,
-                       description=description)
+                       max_memory_size=max_memory_size,
+                       summary_trigger=summary_trigger,
+                       preserve_last_n_context=preserve_last_n_context,
+                       role=role,                        
+                       description=description,
+                       logger=logger)
       
     def chat(self, user_input):
         """
