@@ -1,6 +1,7 @@
-from master_agent.Memory.utils import Summarizer
+import pickle
+from master_agent.utils import Summarizer
 
-class WorkingMemory:
+class Memory:
     def __init__(self, system_message, max_buffer_size=15, summary_trigger=10, preserve_last_n=3, logger = None):
         """
         :param max_buffer_size: Maximum number of chat messages before older ones get summarized.
@@ -11,6 +12,7 @@ class WorkingMemory:
         self.logger_name = "MEMORY"
         self.system_message = system_message
         self.buffer = [self.system_message]  # Maintain chat history
+        self.full_history = [] # Maintain full chat history
         self.max_buffer_size = max_buffer_size
         self.summary_trigger = summary_trigger
         self.preserve_last_n = preserve_last_n
@@ -30,22 +32,12 @@ class WorkingMemory:
 
         # Trigger summarization if the buffer exceeds the threshold
         if len(self.buffer) > self.summary_trigger:
-            self._summarize_assistant_history()
+            self.__summarize_assistant_history()
 
         # Remove oldest messages if buffer exceeds the max size
         if len(self.buffer) > self.max_buffer_size:
-            self.buffer.pop(1) # Remove the oldest user or assistant message
-
-    def _summarize_assistant_history(self):
-        for index in range(len(self.buffer) - self.preserve_last_n - 1):
-            if self.buffer[index]["role"] == "user" and self.buffer[index + 1]["role"] == "assistant":
-                # Skip if the message was already summarized
-                if "Assistant Summary:" in self.buffer[index + 1]["content"]:
-                    continue
-
-                summary = self.summarizer.summarize_long(self.buffer[index + 1]["content"], self.buffer[index]["content"])
-                title = self.summarizer.generate_title(self.buffer[index]["content"], self.buffer[index]["content"])
-                self.buffer[index + 1]["content"] = "Assistant Summary: " + title + " : " + summary
+            message = self.buffer.pop(1) # Remove the oldest user or assistant message
+            self.full_history.append(message)
 
     def get_context(self):
         """
@@ -66,6 +58,44 @@ class WorkingMemory:
         for interaction in self.buffer:
             role, content = interaction["role"], interaction["content"]
             print(f"{role}: {content}")
+
+    def end_chat(self):
+        """
+        Save the full chat history to a file.
+        """
+        self.__update_full_history()
+        # Save the full chat history to a file based on system date and time
+        # file name with date and time
+        filename = "chat_history.pkl"
+        self.__save_memory(filename)
+
+    def __summarize_assistant_history(self):
+        for index in range(len(self.buffer) - self.preserve_last_n - 1):
+            if self.buffer[index]["role"] == "user" and self.buffer[index + 1]["role"] == "assistant":
+                # Skip if the message was already summarized
+                if "Assistant Summary:" in self.buffer[index + 1]["content"]:
+                    continue
+
+                summary = self.summarizer.summarize_long(self.buffer[index + 1]["content"], self.buffer[index]["content"])
+                title = self.summarizer.generate_title(self.buffer[index]["content"], self.buffer[index]["content"])
+                self.buffer[index + 1]["content"] = "Assistant Summary: " + title + " : " + summary
+
+    def __update_full_history(self):
+        while(len(self.buffer) > 1):
+            message = self.buffer.pop(1) # Remove the oldest user or assistant message
+            self.full_history.append(message)
+
+    def __save_memory(self, filename="chat_history.pkl"):
+        """
+        Save the full chat history using pickle.
+        """
+        with open(filename, 'wb') as f:
+            pickle.dump(self.full_history, f)
+        print(f"✅ Chat history saved to {filename}")
+
+
+    
+
 """
 # Unit Test
 if __name__ == "__main__":

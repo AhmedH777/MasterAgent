@@ -2,7 +2,7 @@ from master_agent.LLM import LLM
 
 class Agent:
     def __init__(self,
-                 model="gpt-4-turbo",
+                 model="gpt-4o",
                  max_memory_size=30,
                  summary_trigger=10,
                  preserve_last_n_context=4,
@@ -59,6 +59,12 @@ class Agent:
         """
         return self.model
     
+    def end_chat(self):
+        """
+        End the chat session and save the conversation memory.
+        """
+        self.llm.end_chat()
+
     def __find_model_provider(self):
         """
         Find the model provider based on the model name.
@@ -75,7 +81,7 @@ class Agent:
 """
 # Unit Test
 if __name__ == "__main__":
-    agent = Agent(model="gpt-4-turbo",
+    agent = Agent(model="gpt-4o",
               max_memory_context_buffer=2,            
               role="assistant",
               description="You are a helpful AI assistant.")

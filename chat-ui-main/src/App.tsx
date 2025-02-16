@@ -14,7 +14,7 @@ function App() {
   const [input, setInput] = useState("");
   const [logs, setLogs] = useState<string[]>([]);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
-  const [model, setModel] = useState("gpt-4-turbo");
+  const [model, setModel] = useState("gpt-4o");
 
   // Connect to log stream
   useEffect(() => {
@@ -68,6 +68,25 @@ function App() {
     setInput("");
   };
 
+  const handleEndChat = async () => {
+    try {
+      const response = await fetch("http://localhost:5000/api/save_memory", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+      });
+  
+      const data = await response.json();
+      setLogs((prevLogs) => [...prevLogs, `🛠️ MEMORY: ${data.message}`]);
+  
+      if (data.status === "success") {
+        setMessages([]); // Clear messages
+        setLogs((prevLogs) => [...prevLogs, "✅ Chat ended. Memory saved."]);
+      }
+    } catch (error) {
+      setLogs((prevLogs) => [...prevLogs, `❌ MEMORY: Error saving memory.`]);
+    }
+  };
+  
   // Determine log style based on source
   const getLogStyle = (log: string) => {
     if (log.includes("[SYSTEM]")) return "text-gray-500";
@@ -117,8 +136,8 @@ function App() {
             onChange={(e) => setModel(e.target.value)}
             className="border p-2 rounded-lg"
           >
-            <option value="gpt-4-turbo"> (Online LLM GPT4-turbo)</option>
             <option value="gpt-4o">      (Online LLM GPT4-o)</option>
+            <option value="gpt-4-turbo"> (Online LLM GPT4-turbo)</option>
             <option value="llama3.2">    (Local LLM Llama3.2)</option>
             <option value="deepseek-r1"> (Local LLM DeepSeek-R1)</option>
           </select>
@@ -140,7 +159,6 @@ function App() {
             </div>
           ))}
         </div>
-
         {/* Logs Section */}
         <div className="border-t border-gray-200 p-4 bg-gray-100 h-48 overflow-y-auto">
           <h3 className="text-lg font-bold mb-2">🛠 Real-Time Logs</h3>
@@ -166,6 +184,13 @@ function App() {
               <Send size={20} />
             </button>
           </form>
+          {/* End Chat Button */}
+                    <button 
+            onClick={handleEndChat} 
+            className="ml-4 px-6 py-3 bg-blue-400 text-white rounded-lg hover:bg-blue-500"
+          >
+            End Chat
+          </button>
         </div>
       </div>
     </div>

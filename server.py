@@ -1,9 +1,9 @@
 from flask import Flask, request, jsonify, Response
-from flask_cors import CORS
 from master_agent.Agent import Agent
+from flask_cors import CORS
+from queue import Queue
 import logging
 import time
-from queue import Queue
 
 app = Flask(__name__)
 CORS(app)
@@ -28,7 +28,7 @@ def log_with_source(source, message):
     logger.info(f"[{source}] {message}")
 
 # Initialize the Agent
-agent = Agent(model="gpt-4-turbo",
+agent = Agent(model="gpt-4o",
               max_memory_size=30,
               summary_trigger=10,
               preserve_last_n_context=4,
@@ -40,7 +40,7 @@ agent = Agent(model="gpt-4-turbo",
 def chat():
     data = request.json
     user_message = data.get("message", "")
-    model_type = data.get("model", "gpt-4-turbo")
+    model_type = data.get("model", "gpt-4o")
 
     log_with_source("SYSTEM", f"Received message: {user_message} with model: {model_type}")
 
@@ -65,6 +65,20 @@ def stream_logs():
             log_message = log_queue.get()
             yield f"data: {log_message}\n\n"
     return Response(log_stream(), mimetype='text/event-stream')
+
+@app.route('/api/save_memory', methods=['POST'])
+def save_memory():
+    try:
+        log_with_source("AGENT", "Saving conversation memory...")
+        
+        # Assuming the agent has a method to save memory
+        agent.end_chat()
+
+        log_with_source("AGENT", "Memory saved successfully.")
+        return jsonify({"status": "success", "message": "Memory saved successfully."})
+    except Exception as e:
+        log_with_source("AGENT", f"Error saving memory: {str(e)}")
+        return jsonify({"status": "error", "message": str(e)}), 500
 
 
 if __name__ == '__main__':

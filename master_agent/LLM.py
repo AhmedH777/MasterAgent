@@ -4,7 +4,7 @@ import litellm
 import requests
 import subprocess
 from dotenv import load_dotenv
-from master_agent.Memory.WorkingMemory import WorkingMemory
+from master_agent.Memory import Memory
 
 ############################################################################################################
 ######################################### Ollama and OpenAI API Keys #######################################
@@ -20,7 +20,7 @@ os.environ["OPENAI_API_KEY"] = os.getenv('API_KEY')
 
 class LLM():
     def __init__(self,
-                model="gpt-4-turbo",
+                model="gpt-4o",
                 model_provider="openai",
                 max_memory_size=30,
                 summary_trigger=10,
@@ -45,7 +45,7 @@ class LLM():
         self.logger_name = "LLM"
 
         # Add Short Term Memory
-        self.WM = WorkingMemory(system_message={"role": "system", "content": self.description}, max_buffer_size=max_memory_size, summary_trigger=summary_trigger, preserve_last_n=preserve_last_n_context, logger=logger)
+        self.memory = Memory(system_message={"role": "system", "content": self.description}, max_buffer_size=max_memory_size, summary_trigger=summary_trigger, preserve_last_n=preserve_last_n_context, logger=logger)
         
         # Start or stop the Ollama server based on the model provider
         self.__handle_ollama_server()
@@ -58,19 +58,21 @@ class LLM():
         :return: The response from the model.
         """
         # Add the user input to the Short Term Memory
-        self.WM.add_interaction("user", user_input)
+        self.memory.add_interaction("user", user_input)
 
         # Invoke the model to get a response
+        """
         if self.logger is not None:
-            message = f"Prompt : {self.WM.get_context()}"
+            message = f"Prompt : {self.memory.get_context()}"
             self.logger.info(f"[{self.logger_name}] {message}")
-        response = self.__invoke(self.WM.get_context())
+        """
+        response = self.__invoke(self.memory.get_context())
 
         # Extract the content of the response
         filtered_response = response["choices"][0]["message"]["content"]
 
         # Add the response to the Short Term Memory
-        self.WM.add_interaction(self.role, filtered_response)
+        self.memory.add_interaction(self.role, filtered_response)
 
         return filtered_response
 
@@ -91,23 +93,13 @@ class LLM():
 
         # Start or stop the Ollama server based on the model provider
         self.__handle_ollama_server()
-
-    def __summarize_conversation(self):
-        """
-        Summarize the conversation history.
-        
-        :return: The summary of the conversation.
-        """
-        summary_prompt = [
-            {"role": "system", "content": "Summarize this conversation briefly."},
-            {"role": "user", "content": str(self.history)}
-        ]
-        
-        # Invoke the model to get a summary
-        response = self.__invoke(summary_prompt)
-        
-        return response["choices"][0]["message"]["content"]
     
+    def end_chat(self):
+        """
+        End the chat session and save the conversation memory.
+        """
+        self.memory.end_chat()
+
     def __invoke(self, prompt):
         """
         Invoke the model to generate a response based on the given prompt.
