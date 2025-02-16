@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { MessageSquarePlus, Menu, Settings, LogOut, Send, Bot, User } from 'lucide-react';
+import hljs from "highlight.js";
+import "highlight.js/styles/github-dark.css"; // You can choose another theme
 
 interface Message {
   id: number;
@@ -31,17 +33,52 @@ function App() {
     return () => eventSource.close();
   }, []);
 
+  // Highlight code whenever messages update
+  useEffect(() => {
+    hljs.highlightAll(); // Apply syntax highlighting
+  }, [messages]); // Runs every time a new AI message is added
+
+
   const formatResponse = (text: string) => {
     return text
+      // ✅ Fix Code Blocks (Preserve new lines & spaces correctly)
+      .replace(/```(\w+)?\n([\s\S]+?)```/g, (_, lang, code) => {
+        const language = lang || "plaintext"; // Default to plaintext if no language detected
+        return `
+          <div class="code-container">
+            <div class="code-header">
+              <span>${language.toUpperCase()}</span>
+            </div>
+            <pre><code class="hljs ${language}">${code
+              .replace(/</g, "&lt;")  // Prevent HTML from breaking formatting
+              .replace(/>/g, "&gt;")  // Prevent HTML from breaking formatting
+              .replace(/\n/g, "<br>") // ✅ Ensures new lines appear
+              .replace(/ /g, "&nbsp;") // ✅ Preserve multiple spaces (indentation)
+            }</code></pre>
+          </div>`;
+      })
+  
+      // ✅ Format Inline Code (`inline code`)
+      .replace(/`([^`]+)`/g, '<code class="bg-gray-200 text-red-600 px-1 rounded">$1</code>')
+  
+      // ✅ Format Headers (### Header)
       .replace(/### (.*?)\n/g, '<h2 class="text-lg font-bold mt-4">$1</h2>')
+  
+      // ✅ Format Bold Text (**bold** → <strong>bold</strong>)
       .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+  
+      // ✅ Format Ordered Lists (1. Item)
       .replace(/\n\d+\.\s(.*?)$/gm, '<li class="ml-4 list-decimal">$1</li>')
       .replace(/(<li class="ml-4 list-decimal">.*?<\/li>)+/g, '<ol class="ml-4 list-decimal">$&</ol>')
+  
+      // ✅ Format Unordered Lists (- Item)
       .replace(/\n-\s(.*?)$/gm, '<li class="ml-4 list-disc">$1</li>')
       .replace(/(<li class="ml-4 list-disc">.*?<\/li>)+/g, '<ul class="ml-4 list-disc">$&</ul>')
-      .replace(/\n/g, "<br>");
+  
+      // ✅ Preserve Normal Paragraph Formatting (Ensures proper new lines only outside `<pre>`)
+      .replace(/\n(?!<\/?pre>)/g, "<br>");
   };
-
+  
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!input.trim()) return;

@@ -1,3 +1,32 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@layer components {
+    /* Code Block Container (Restrict Width + Center) */
+    .code-container {
+      @apply max-w-2xl mx-auto my-4 w-full;
+    }
+  
+    /* ✅ Ensure Code Blocks Preserve Formatting */
+    pre {
+      @apply bg-gray-100 text-gray-800 p-4 rounded-lg overflow-x-auto font-mono border border-gray-300;
+      font-size: 0.9rem;
+      line-height: 1.5;
+      white-space: pre-wrap; /* ✅ Ensures text wraps properly */
+      word-wrap: break-word;  /* ✅ Prevents horizontal scrolling */
+      max-width: 100%;
+    }
+  
+    /* ✅ Ensure Code Stays Inside Pre */
+    pre code {
+      display: block;
+      white-space: pre-wrap; /* ✅ Ensures new lines and indentation are preserved */
+    }
+  
+    /* Code Header (Language Label Only) */
+    .code-header {
+      @apply flex items-center px-4 py-2 bg-gray-200 text-xs font-semibold uppercase text-gray-600 rounded-t-lg max-w-2xl mx-auto w-full;
+    }
+  }
+  
