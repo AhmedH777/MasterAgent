@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { MessageSquarePlus, Menu, Settings, LogOut, Send, Bot, User } from 'lucide-react';
 import hljs from "highlight.js";
 import "highlight.js/styles/github-dark.css"; // You can choose another theme
+import "katex/dist/katex.min.css";
+import katex from "katex";
 
 interface Message {
   id: number;
@@ -40,7 +42,24 @@ function App() {
 
 
   const formatResponse = (text: string) => {
+    // ✅ Check if the response is in JSON format before parsing
+    if (text.trim().startsWith("{") && text.trim().endsWith("}")) {
+      try {
+        const json = JSON.parse(text);
+  
+        // ✅ If response contains a base64 image, return an <img> tag
+        if (json.image) {
+          return `<img src="data:image/png;base64,${json.image}" alt="Visualization" class="plot-image" />`;
+        }
+      } catch (e) {
+        console.error("❌ JSON Parse Error:", e);
+      }
+    }
+  
     return text
+      // ✅ Detect and replace Markdown-style images `![Alt](image_url)`
+      .replace(/!\[.*?\]\((data:image\/png;base64,[^\)]+)\)/g, '<img src="$1" alt="Visualization" class="max-w-full rounded-lg shadow-md"/>')
+  
       // ✅ Fix Code Blocks (Preserve new lines & spaces correctly)
       .replace(/```(\w+)?\n([\s\S]+?)```/g, (_, lang, code) => {
         const language = lang || "plaintext"; // Default to plaintext if no language detected
@@ -76,7 +95,20 @@ function App() {
       .replace(/(<li class="ml-4 list-disc">.*?<\/li>)+/g, '<ul class="ml-4 list-disc">$&</ul>')
   
       // ✅ Preserve Normal Paragraph Formatting (Ensures proper new lines only outside `<pre>`)
-      .replace(/\n(?!<\/?pre>)/g, "<br>");
+      .replace(/\n(?!<\/?pre>)/g, "<br>")
+  
+      // ✅ Convert Markdown Links
+      .replace(/\[([^\]]+)\]\((https?:\/\/[^\s]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer" class="text-blue-600 underline hover:text-blue-800">$1</a>')
+  
+      // ✅ Convert LaTeX Block Equations (\[ ... \]) into rendered math
+      .replace(/\\\[(.*?)\\\]/gs, (_, equation) => {
+        return `<div class="math-block">${katex.renderToString(equation, { throwOnError: false, displayMode: true })}</div>`;
+      })
+  
+      // ✅ Convert Inline Equations (\( ... \)) into inline math
+      .replace(/\\\((.*?)\\\)/g, (_, equation) => {
+        return `<span class="math-inline">${katex.renderToString(equation, { throwOnError: false, displayMode: false })}</span>`;
+      });
   };
   
   const handleSubmit = async (e: React.FormEvent) => {
@@ -188,7 +220,7 @@ function App() {
               </div>
               <div className="flex-1">
                 {message.isBot ? (
-                  <div dangerouslySetInnerHTML={{ __html: message.content }} className="text-gray-800 leading-relaxed"></div>
+                  <div dangerouslySetInnerHTML={{ __html: message.content }} className="text-gray-800 leading-relaxed space-y-4"/>
                 ) : (
                   <p className="text-gray-800 leading-relaxed">{message.content}</p>
                 )}
@@ -197,17 +229,16 @@ function App() {
           ))}
         </div>
         {/* Logs Section */}
-        <div className="border-t border-gray-200 p-4 bg-gray-100 h-48 overflow-y-auto">
+        <div className="log-window">
           <h3 className="text-lg font-bold mb-2">🛠 Real-Time Logs</h3>
-          <ul className="text-sm">
+          <ul className="log-messages">
             {logs.map((log, index) => (
-              <li key={index} className={`mb-1 ${getLogStyle(log)}`}>
+              <li key={index} className={`log-message ${getLogStyle(log)}`}>
                 {getLogIcon(log)} {log}
               </li>
             ))}
           </ul>
         </div>
-
         <div className="border-t border-gray-200 p-4 bg-white">
           <form onSubmit={handleSubmit} className="max-w-3xl mx-auto relative">
             <input

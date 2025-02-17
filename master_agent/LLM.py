@@ -1,7 +1,9 @@
 import os
 import time
+import json
 import litellm
 import requests
+import importlib
 import subprocess
 from dotenv import load_dotenv
 from master_agent.Memory import Memory
@@ -40,6 +42,7 @@ class LLM():
         self.model_provider = model_provider
         self.role = role
         self.description = description
+        self.tools = self.__load_tools()  # Load tools dynamically
         self.ollama_process = None
         self.logger = logger
         self.logger_name = "LLM"
@@ -60,12 +63,11 @@ class LLM():
         # Add the user input to the Short Term Memory
         self.memory.add_interaction("user", user_input)
 
+        # if self.logger is not None:
+        #     message = f"Prompt : {self.memory.get_context()}"
+        #     self.logger.info(f"[{self.logger_name}] {message}")
+
         # Invoke the model to get a response
-        """
-        if self.logger is not None:
-            message = f"Prompt : {self.memory.get_context()}"
-            self.logger.info(f"[{self.logger_name}] {message}")
-        """
         response = self.__invoke(self.memory.get_context())
 
         # Extract the content of the response
@@ -100,6 +102,25 @@ class LLM():
         """
         self.memory.end_chat()
 
+    def __load_tools(self):
+        """Load tools dynamically from `tools_config.json`."""
+        with open("master_agent/tools/tools_config.json", "r") as file:
+            config = json.load(file)
+
+        tool_instances = {}
+        for tool in config["tools"]:
+            try:
+                module = importlib.import_module(tool["module"])
+                tool_class = getattr(module, tool["class"])
+                tool_instances[tool["name"]] = tool_class()
+            except ModuleNotFoundError as e:
+                if self.logger is not None:
+                    message = f"Error loading {tool['name']}: {e}"
+                    self.logger.info(f"[{self.logger_name}] {message}")
+                print(message)
+        
+        return tool_instances
+    
     def __invoke(self, prompt):
         """
         Invoke the model to generate a response based on the given prompt.
@@ -109,10 +130,17 @@ class LLM():
         """
         response = "Failed to generate response, model not found"
         if "gpt" in self.model:
+            # if self.logger is not None:
+            #     message = [tool.as_dict() for tool in self.tools.values()]
+            #     self.logger.info(f"[{self.logger_name}] {message}")
             response = litellm.completion(
                         model= self.model,
-                        messages=prompt
+                        messages=prompt,
+                        tools=[tool.as_dict() for tool in self.tools.values()]
                     )
+            if self.logger is not None:
+                message = response
+                self.logger.info(f"[{self.logger_name}] {message}")
         elif "llama" in self.model:
             response = litellm.completion(
                         model= "ollama/" + str(self.model),
@@ -126,6 +154,63 @@ class LLM():
                         messages=prompt,
                         api_base="http://localhost:11434"
                     )
+
+        if self.logger is not None:
+            message = "gpt" in self.model
+            self.logger.info(f"[{self.logger_name}] {message}")
+            message = "choices" in response
+            self.logger.info(f"[{self.logger_name}] {message}") 
+            message = response["choices"][0].message.tool_calls is not None
+            self.logger.info(f"[{self.logger_name}] {message}") 
+
+
+        # Check if the model requested a tool call
+        current_prompt = prompt
+        if "gpt" in self.model:
+            while("choices" in response and response["choices"][0].message.tool_calls is not None):
+                tool_calls = response["choices"][0].message.tool_calls  # ✅ Access `tool_calls` properly
+
+                if self.logger is not None:
+                    message = tool_calls
+                    self.logger.info(f"[{self.logger_name}] {message}")
+                for tool_call in tool_calls:
+                    function_name = tool_call.function.name.lower()
+                    arguments = json.loads(tool_call.function.arguments)
+        
+                    if self.logger is not None:
+                        message = str(function_name) + " " + str(arguments) + " " + str(self.tools)
+                        self.logger.info(f"[{self.logger_name}] {message}")
+
+                    if function_name in {name.lower(): tool for name, tool in self.tools.items()}:
+                        tool = self.tools[[key for key in self.tools.keys() if key.lower() == function_name][0]]
+                        result = tool.run(arguments)
+                        if self.logger is not None:
+                            message = result
+                            self.logger.info(f"[{self.logger_name}] {message}")
+
+                        if not isinstance(result, str):
+                            result = json.dumps(result)  # ✅ Convert result to string if needed
+
+
+                        # Ensure OpenAI gets a properly formatted tool response
+                        current_prompt += [
+                            {"role": "function", "name": function_name, "content": result}
+                        ]
+
+                        if self.logger is not None:
+                            message = current_prompt
+                            self.logger.info(f"[{self.logger_name}] {message}")
+
+                            response = litellm.completion(
+                            model=self.model,
+                            messages=current_prompt,
+                            tools=[tool.as_dict() for tool in self.tools.values()]
+                        )
+
+                        if self.logger is not None:
+                            message = response
+                            self.logger.info(f"[{self.logger_name}] {message}")
+
         return response
 
     # Function to check if ollama is running

@@ -1,0 +1,29 @@
+{
+    "tools": [
+        {
+            "name": "ReadCsvTool",
+            "module": "master_agent.tools.ReadCsvTool",
+            "class": "ReadCsvTool"
+        },
+        {
+            "name": "WebSearchTool",
+            "module": "master_agent.tools.WebSearchTool",
+            "class": "WebSearchTool"
+        },
+        {
+            "name": "WebScraperTool",
+            "module": "master_agent.tools.WebScraperTool",
+            "class": "WebScraperTool"
+        },
+        {
+            "name": "PythonExecutionTool",
+            "module": "master_agent.tools.PythonExecutionTool",
+            "class": "PythonExecutionTool"
+        },
+        {
+            "name": "DataVisualizationTool",
+            "module": "master_agent.tools.DataVisualizationTool",
+            "class": "DataVisualizationTool"
+        }
+    ]
+}

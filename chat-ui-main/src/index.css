@@ -28,5 +28,31 @@
     .code-header {
       @apply flex items-center px-4 py-2 bg-gray-200 text-xs font-semibold uppercase text-gray-600 rounded-t-lg max-w-2xl mx-auto w-full;
     }
-  }
-  
+
+    /* ✅ Log Window - Prevents Screen Stretching */
+    .log-window {
+      @apply border-t border-gray-200 bg-gray-900 text-white p-4 rounded-lg shadow-md mt-4;
+      max-height: 300px; /* ✅ Prevents excessive vertical growth */
+      overflow-y: auto; /* ✅ Enables scrolling if logs exceed max height */
+      word-wrap: break-word; /* ✅ Ensures long words (base64 strings) wrap correctly */
+      white-space: pre-wrap; /* ✅ Preserves formatting while ensuring wrap */
+      overflow-x: auto; /* ✅ Allows horizontal scroll only if absolutely needed */
+    }
+
+    /* ✅ Log Message Styling (Fixes for Long Text & Wrapping) */
+    .log-message {
+      @apply font-mono px-2 py-1 border-b border-gray-700 text-sm;
+      line-height: 1.4;
+      max-width: 100%; /* ✅ Prevents messages from stretching the layout */
+      overflow-wrap: break-word; /* ✅ Breaks long words correctly */
+      word-break: break-word; /* ✅ Ensures words break within container */
+    }
+
+    /* ✅ Ensure Images (Plots) Scale Properly */
+    .plot-image {
+      @apply max-w-full mx-auto rounded-lg shadow-md;
+      height: auto; /* Maintain aspect ratio */
+      object-fit: contain; /* Prevent distortion */
+      display: block;
+    }
+}

@@ -8,6 +8,7 @@
   },
   "dependencies": {
     "concurrently": "^7.0.0",
-    "highlight.js": "^11.11.1"
+    "highlight.js": "^11.11.1",
+    "katex": "^0.16.21"
   }
 }
