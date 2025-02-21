@@ -1,11 +1,10 @@
 import matplotlib
 matplotlib.use("Agg")  # ✅ Force non-GUI backend before importing pyplot
 
+import os
 import json
-import base64
 import pandas as pd
 import seaborn as sns
-from io import BytesIO
 import matplotlib.pyplot as plt
 from pydantic import BaseModel
 from master_agent.tools.BaseTool import BaseTool
@@ -33,12 +32,8 @@ class DataVisualizationTool(BaseTool):
         valid_analysis_types = {"summary", "describe", "histogram", "line_chart", "bar_chart", "scatter_plot"}
 
         try:
-            # Debugging Step: Print received arguments
-            print(f"Debug - Received Args: {args}")
-
             # Load data
             df = pd.read_csv(file_path) if file_path.endswith(".csv") else pd.read_excel(file_path)
-            print(f"Data Loaded Successfully. Columns: {df.columns.tolist()}")
 
             # Validate analysis type
             if analysis_type not in valid_analysis_types:
@@ -55,8 +50,6 @@ class DataVisualizationTool(BaseTool):
             if analysis_type in {"histogram", "line_chart", "bar_chart", "scatter_plot"}:
                 if column_x not in df.columns or (column_y and column_y not in df.columns):
                     return json.dumps({"error": f"Invalid column names: {column_x}, {column_y}. Ensure they exist in the dataset."})
-
-                print(f"Generating Plot: {analysis_type} - X: {column_x}, Y: {column_y}")
 
                 plt.clf()  # Clear previous figures
                 plt.figure(figsize=(6, 4), dpi=100)
@@ -85,17 +78,21 @@ class DataVisualizationTool(BaseTool):
 
                 plt.title(f"{analysis_type.capitalize()} of {column_x} vs {column_y}")
 
-                # Convert the plot to a base64-encoded string
-                img_buffer = BytesIO()
-                plt.savefig(img_buffer, format="png", bbox_inches='tight')  # Prevent cropping
-                img_buffer.seek(0)
-                img_base64 = base64.b64encode(img_buffer.read()).decode()
+                # Save plot in a project 'temp' directory
+                project_dir = os.path.dirname(os.path.abspath(__file__))
+                temp_dir = os.path.join(project_dir, '..', '..', 'temp')
+                os.makedirs(temp_dir, exist_ok=True)  # Create temp folder if it doesn't exist
 
-                plt.close()  # Close the figure to free memory
-                print("Plot successfully generated.")
+                file_name = os.path.join(temp_dir, "plot.png")
+                plt.savefig(file_name, format="png", bbox_inches='tight')
+                plt.close()
 
-                return json.dumps({"image": img_base64})
+                # Return JSON with relative path
+                return json.dumps({
+                    "message": f"The data has been read successfully, and a {analysis_type} visualizing the relationship between {column_x} and {column_y} is ready.",
+                    "image_url": "/temp/plot.png"
+                })
+
 
         except Exception as e:
-            print(f"Error: {str(e)}")
             return json.dumps({"error": str(e)})

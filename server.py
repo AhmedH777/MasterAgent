@@ -1,9 +1,12 @@
-from flask import Flask, request, jsonify, Response
+from flask import Flask, request, jsonify, Response, send_from_directory
 from master_agent.Agent import Agent
 from flask_cors import CORS
 from queue import Queue
+import tempfile
 import logging
-import time
+import json
+import os
+import re
 
 app = Flask(__name__)
 CORS(app)
@@ -52,11 +55,16 @@ def chat():
         agent.set_model(model_type)
         log_with_source("AGENT", f"Switched model to {model_type}")
 
-    bot_reply = agent.chat(user_message)
-    log_with_source("LLM", f"Bot reply: {bot_reply}")
+    try:
+        bot_reply = agent.chat(user_message)
+        log_with_source("LLM", f"Bot reply: {bot_reply}")
 
-    return jsonify({"response": bot_reply})
+        # Directly return the bot reply without JSON parsing
+        return jsonify({"response": bot_reply})
 
+    except Exception as e:
+        log_with_source("LLM", f"Error: {str(e)}")
+        return jsonify({"error": str(e)}), 500
 
 @app.route('/api/logs', methods=['GET'])
 def stream_logs():
@@ -74,11 +82,27 @@ def save_memory():
         # Assuming the agent has a method to save memory
         agent.end_chat()
 
-        log_with_source("AGENT", "Memory saved successfully.")
+        # Clean Project Temp Directory
+        project_dir = os.path.dirname(os.path.abspath(__file__))
+        temp_dir = os.path.join(project_dir, 'temp')
+
+        for filename in os.listdir(temp_dir):
+            file_path = os.path.join(temp_dir, filename)
+            if os.path.isfile(file_path):
+                os.remove(file_path)
+
         return jsonify({"status": "success", "message": "Memory saved successfully."})
     except Exception as e:
         log_with_source("AGENT", f"Error saving memory: {str(e)}")
         return jsonify({"status": "error", "message": str(e)}), 500
+
+# Serve the generated plot image
+@app.route('/temp/<filename>')
+def serve_temp_file(filename):
+    # Serve from project 'temp' folder
+    project_dir = os.path.dirname(os.path.abspath(__file__))
+    temp_dir = os.path.join(project_dir, 'temp')
+    return send_from_directory(temp_dir, filename)
 
 
 if __name__ == '__main__':

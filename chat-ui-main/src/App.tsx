@@ -42,70 +42,71 @@ function App() {
 
 
   const formatResponse = (text: string) => {
-    // ✅ Check if the response is in JSON format before parsing
+    // ✅ Check if the response is JSON format before parsing
     if (text.trim().startsWith("{") && text.trim().endsWith("}")) {
       try {
         const json = JSON.parse(text);
   
-        // ✅ If response contains a base64 image, return an <img> tag
-        if (json.image) {
-          return `<img src="data:image/png;base64,${json.image}" alt="Visualization" class="plot-image" />`;
+        // ✅ Start with the message if it exists
+        let formattedMessage = json.message || "";
+  
+        // ✅ If response contains an image URL, append an <img> tag
+        if (json.image_url) {
+          formattedMessage += `<br><img src="http://localhost:5000${json.image_url}" alt="Visualization" class="plot-image" />`;
         }
+  
+        return formattedMessage;
       } catch (e) {
         console.error("❌ JSON Parse Error:", e);
       }
     }
   
-    return text
-      // ✅ Detect and replace Markdown-style images `![Alt](image_url)`
-      .replace(/!\[.*?\]\((data:image\/png;base64,[^\)]+)\)/g, '<img src="$1" alt="Visualization" class="max-w-full rounded-lg shadow-md"/>')
+    // ✅ Handle Markdown links and replace them with images
+    const markdownImageRegex = /\[here\]\((.*?)\)/g;
   
-      // ✅ Fix Code Blocks (Preserve new lines & spaces correctly)
+    // Replace Markdown link with <img> tag
+    text = text.replace(markdownImageRegex, (match, imageUrl) => {
+      // Remove 'sandbox:' prefix if present
+      imageUrl = imageUrl.replace('sandbox:', '');
+      return `<br><img src="http://localhost:5000${imageUrl}" alt="Visualization" class="plot-image" />`;
+    });
+
+    // ✅ NEW: Handle Markdown image syntax ![alt](...)
+    const markdownImageSyntaxRegex = /!\[.*?\]\((.*?)\)/g;
+    text = text.replace(markdownImageSyntaxRegex, (match, imageUrl) => {
+      return `<br><img src="http://localhost:5000${imageUrl}" alt="Visualization" class="plot-image" />`;
+    });
+    
+    return text
+      // ✅ Keep the rest of your existing formatting logic as it is
+      .replace(/!\[.*?\]\((data:image\/png;base64,[^\)]+)\)/g, '<img src="$1" alt="Visualization" class="max-w-full rounded-lg shadow-md"/>')
       .replace(/```(\w+)?\n([\s\S]+?)```/g, (_, lang, code) => {
-        const language = lang || "plaintext"; // Default to plaintext if no language detected
+        const language = lang || "plaintext";
         return `
           <div class="code-container">
             <div class="code-header">
               <span>${language.toUpperCase()}</span>
             </div>
             <pre><code class="hljs ${language}">${code
-              .replace(/</g, "&lt;")  // Prevent HTML from breaking formatting
-              .replace(/>/g, "&gt;")  // Prevent HTML from breaking formatting
-              .replace(/\n/g, "<br>") // ✅ Ensures new lines appear
-              .replace(/ /g, "&nbsp;") // ✅ Preserve multiple spaces (indentation)
+              .replace(/</g, "&lt;")
+              .replace(/>/g, "&gt;")
+              .replace(/\n/g, "<br>")
+              .replace(/ /g, "&nbsp;")
             }</code></pre>
           </div>`;
       })
-  
-      // ✅ Format Inline Code (`inline code`)
       .replace(/`([^`]+)`/g, '<code class="bg-gray-200 text-red-600 px-1 rounded">$1</code>')
-  
-      // ✅ Format Headers (### Header)
       .replace(/### (.*?)\n/g, '<h2 class="text-lg font-bold mt-4">$1</h2>')
-  
-      // ✅ Format Bold Text (**bold** → <strong>bold</strong>)
       .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-  
-      // ✅ Format Ordered Lists (1. Item)
       .replace(/\n\d+\.\s(.*?)$/gm, '<li class="ml-4 list-decimal">$1</li>')
       .replace(/(<li class="ml-4 list-decimal">.*?<\/li>)+/g, '<ol class="ml-4 list-decimal">$&</ol>')
-  
-      // ✅ Format Unordered Lists (- Item)
       .replace(/\n-\s(.*?)$/gm, '<li class="ml-4 list-disc">$1</li>')
       .replace(/(<li class="ml-4 list-disc">.*?<\/li>)+/g, '<ul class="ml-4 list-disc">$&</ul>')
-  
-      // ✅ Preserve Normal Paragraph Formatting (Ensures proper new lines only outside `<pre>`)
       .replace(/\n(?!<\/?pre>)/g, "<br>")
-  
-      // ✅ Convert Markdown Links
       .replace(/\[([^\]]+)\]\((https?:\/\/[^\s]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer" class="text-blue-600 underline hover:text-blue-800">$1</a>')
-  
-      // ✅ Convert LaTeX Block Equations (\[ ... \]) into rendered math
       .replace(/\\\[(.*?)\\\]/gs, (_, equation) => {
         return `<div class="math-block">${katex.renderToString(equation, { throwOnError: false, displayMode: true })}</div>`;
       })
-  
-      // ✅ Convert Inline Equations (\( ... \)) into inline math
       .replace(/\\\((.*?)\\\)/g, (_, equation) => {
         return `<span class="math-inline">${katex.renderToString(equation, { throwOnError: false, displayMode: false })}</span>`;
       });
