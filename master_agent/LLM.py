@@ -138,9 +138,11 @@ class LLM():
                         messages=prompt,
                         tools=[tool.as_dict() for tool in self.tools.values()]
                     )
+            '''
             if self.logger is not None:
                 message = response
                 self.logger.info(f"[{self.logger_name}] {message}")
+            '''
         elif "llama" in self.model:
             response = litellm.completion(
                         model= "ollama/" + str(self.model),
@@ -154,7 +156,7 @@ class LLM():
                         messages=prompt,
                         api_base="http://localhost:11434"
                     )
-
+        '''
         if self.logger is not None:
             message = "gpt" in self.model
             self.logger.info(f"[{self.logger_name}] {message}")
@@ -162,32 +164,34 @@ class LLM():
             self.logger.info(f"[{self.logger_name}] {message}") 
             message = response["choices"][0].message.tool_calls is not None
             self.logger.info(f"[{self.logger_name}] {message}") 
-
+        '''
 
         # Check if the model requested a tool call
         current_prompt = prompt
         if "gpt" in self.model:
             while("choices" in response and response["choices"][0].message.tool_calls is not None):
                 tool_calls = response["choices"][0].message.tool_calls  # ✅ Access `tool_calls` properly
-
+                '''
                 if self.logger is not None:
                     message = tool_calls
                     self.logger.info(f"[{self.logger_name}] {message}")
+                '''
                 for tool_call in tool_calls:
                     function_name = tool_call.function.name.lower()
                     arguments = json.loads(tool_call.function.arguments)
-        
+                    '''
                     if self.logger is not None:
                         message = str(function_name) + " " + str(arguments) + " " + str(self.tools)
                         self.logger.info(f"[{self.logger_name}] {message}")
-
+                    '''
                     if function_name in {name.lower(): tool for name, tool in self.tools.items()}:
                         tool = self.tools[[key for key in self.tools.keys() if key.lower() == function_name][0]]
                         result = tool.run(arguments)
+                        '''
                         if self.logger is not None:
                             message = result
                             self.logger.info(f"[{self.logger_name}] {message}")
-
+                        '''
                         if not isinstance(result, str):
                             result = json.dumps(result)  # ✅ Convert result to string if needed
 
@@ -197,20 +201,20 @@ class LLM():
                             {"role": "function", "name": function_name, "content": result}
                         ]
 
+                        '''
                         if self.logger is not None:
                             message = current_prompt
                             self.logger.info(f"[{self.logger_name}] {message}")
-
-                            response = litellm.completion(
-                            model=self.model,
-                            messages=current_prompt,
-                            tools=[tool.as_dict() for tool in self.tools.values()]
-                        )
-
+                        '''
+                        response = litellm.completion(
+                        model=self.model,
+                        messages=current_prompt,
+                        tools=[tool.as_dict() for tool in self.tools.values()])
+                        '''
                         if self.logger is not None:
                             message = response
                             self.logger.info(f"[{self.logger_name}] {message}")
-
+                        '''
         return response
 
     # Function to check if ollama is running

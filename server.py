@@ -32,8 +32,8 @@ def log_with_source(source, message):
 
 # Initialize the Agent
 agent = Agent(model="gpt-4o",
-              max_memory_size=30,
-              summary_trigger=10,
+              max_memory_size=100,
+              summary_trigger=80,
               preserve_last_n_context=4,
               role="assistant",
               description="You are a helpful AI assistant.",
