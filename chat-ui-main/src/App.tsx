@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { MessageSquarePlus, Menu, Settings, LogOut, Send, Bot, User } from 'lucide-react';
 import hljs from "highlight.js";
 import "highlight.js/styles/github-dark.css"; // You can choose another theme
@@ -20,7 +20,13 @@ function App() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [model, setModel] = useState("gpt-4o");
   const [isLoading, setIsLoading] = useState(false);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
 
+  // Scroll to the bottom
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages]); // Trigger on every new message
+  
   // Connect to log stream
   useEffect(() => {
     const eventSource = new EventSource('http://localhost:5000/api/logs');
@@ -232,6 +238,7 @@ function App() {
               </div>
             </div>
           ))}
+          <div ref={messagesEndRef} />
         </div>
         {/*Typing Indicator */}
         {isLoading && (
