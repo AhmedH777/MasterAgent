@@ -19,6 +19,7 @@ function App() {
   const [logs, setLogs] = useState<string[]>([]);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [model, setModel] = useState("gpt-4o");
+  const [isLoading, setIsLoading] = useState(false);
 
   // Connect to log stream
   useEffect(() => {
@@ -118,6 +119,7 @@ function App() {
 
     const userMessage = { id: Date.now(), content: input, isBot: false };
     setMessages((prev) => [...prev, userMessage]);
+    setIsLoading(true);
 
     try {
       const response = await fetch("http://localhost:5000/api/chat", {
@@ -133,6 +135,8 @@ function App() {
       setMessages((prev) => [...prev, botMessage]);
     } catch (error) {
       console.error("Error:", error);
+    } finally {
+      setIsLoading(false);
     }
 
     setInput("");
@@ -229,6 +233,15 @@ function App() {
             </div>
           ))}
         </div>
+        {/*Typing Indicator */}
+        {isLoading && (
+        <div className="flex items-center space-x-2 p-4">
+          <div className="w-3 h-3 bg-gray-500 rounded-full animate-bounce"></div>
+          <div className="w-3 h-3 bg-gray-500 rounded-full animate-bounce [animation-delay:0.2s]"></div>
+          <div className="w-3 h-3 bg-gray-500 rounded-full animate-bounce [animation-delay:0.4s]"></div>
+          <span className="text-gray-500">Typing...</span>
+        </div>
+        )}
         {/* Logs Section */}
         <div className="log-window">
           <h3 className="text-lg font-bold mb-2">🛠 Real-Time Logs</h3>
