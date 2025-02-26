@@ -1,3 +1,5 @@
+import json
+import importlib
 from master_agent.LLM import LLM
 
 class Agent:
@@ -15,7 +17,7 @@ class Agent:
         :param model: The model to use for generating responses.
         """
         self.logger = logger
-        self.logger_name = "Agent"
+        self.logger_name = "AGENT"
         self.model = model
         self.llm = LLM(model=model,
                        model_provider=self.__find_model_provider(),
@@ -23,9 +25,12 @@ class Agent:
                        summary_trigger=summary_trigger,
                        preserve_last_n_context=preserve_last_n_context,
                        role=role,                        
-                       description=description,
+                       description=self.__generate_tool_description(description),
                        logger=logger)
-      
+        if self.logger:
+            text = f"Agent initialized with description:{self.llm.description}"
+            self.logger.info(f"[{self.logger_name}] {text}")
+
     def chat(self, user_input):
         """
         Handle a chat interaction with the user.
@@ -64,6 +69,37 @@ class Agent:
         End the chat session and save the conversation memory.
         """
         self.llm.end_chat()
+
+    def __generate_tool_description(self, description):
+        """Dynamically loads tool descriptions from tools_config.json and tool classes."""
+        tools_description = []
+        tools_config_path = "master_agent/tools/tools_config.json"  # Adjust path as needed
+
+        try:
+            # Load tool configurations from JSON
+            with open(tools_config_path, "r") as file:
+                config = json.load(file)
+
+            for tool in config.get("tools", []):
+                module_name = tool["module"]  # e.g., "master_agent.tools.PythonExecutionTool"
+                class_name = tool["class"]  # e.g., "PythonExecutionTool"
+
+                # Dynamically import the tool class
+                module = importlib.import_module(module_name)
+                tool_class = getattr(module, class_name)
+
+                tools_description.append(f"🔹 **{class_name}** - {tool_class.description}")
+
+        except Exception as e:
+            if self.logger:
+                self.logger.error(f"Error loading tool descriptions: {e}")
+
+        return (
+                description +  # Base AI assistant description
+                ".You have access to the following tools: " +  
+                "\t".join(tools_description) +  # Dynamically generated tool list
+                "Use these tools when necessary to assist the user efficiently."
+                )
 
     def __find_model_provider(self):
         """
