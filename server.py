@@ -1,12 +1,17 @@
 from flask import Flask, request, jsonify, Response, send_from_directory
 from master_agent.Agent import Agent
+from dotenv import load_dotenv
 from flask_cors import CORS
+from waitress import serve
 from queue import Queue
-import tempfile
 import logging
-import json
 import os
-import re
+
+# Load environment variables
+load_dotenv()
+
+# Get the mode (default to production if not set)
+FLASK_DEBUG = os.getenv("FLASK_DEBUG", "0")  # Default to 0 (production)
 
 app = Flask(__name__)
 CORS(app)
@@ -106,4 +111,9 @@ def serve_temp_file(filename):
 
 
 if __name__ == '__main__':
-    app.run(debug=True, port=5000)
+    if FLASK_DEBUG == "1":
+        print("Running in Development Mode (logs enabled)")
+        app.run(debug=True, port=5000)
+    else:
+        print("Running in Production Mode (optimized for performance)")
+        serve(app, host='0.0.0.0', port=5000, threads=4)

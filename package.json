@@ -2,12 +2,14 @@
   "name": "chat-ui-main",
   "version": "1.0.0",
   "scripts": {
-    "start": "concurrently \"npm run frontend\" \"npm run backend\"",
+    "start:dev": "set FLASK_DEBUG=1 && concurrently \"npm run frontend\" \"npm run backend\"",
+    "start:prod": "set FLASK_DEBUG=0 && concurrently \"npm run frontend\" \"npm run backend\"",
     "frontend": "cd chat-ui-main && npm install && npm run dev",
     "backend": "python server.py"
   },
   "dependencies": {
     "concurrently": "^7.0.0",
+    "cross-env": "^7.0.3",
     "highlight.js": "^11.11.1",
     "katex": "^0.16.21"
   }
