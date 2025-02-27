@@ -1,0 +1,17 @@
+{
+    "weather": {
+        "url": "https://api.openweathermap.org/data/2.5/weather",
+        "method": "GET",
+        "params": ["q", "appid"]
+    },
+    "bitcoin_price": {
+        "url": "https://api.coingecko.com/api/v3/simple/price",
+        "method": "GET",
+        "params": ["ids", "vs_currencies"]
+    },
+    "arxiv_search": {
+        "url": "http://export.arxiv.org/api/query",
+        "method": "GET",
+        "params": ["search_query", "start", "max_results"]
+    }
+}

@@ -24,6 +24,11 @@
             "name": "DataVisualizationTool",
             "module": "master_agent.tools.DataVisualizationTool",
             "class": "DataVisualizationTool"
+        },
+        {
+            "name": "ApiRequestTool",
+            "module": "master_agent.tools.ApiRequestTool",
+            "class": "ApiRequestTool"
         }
     ]
 }
